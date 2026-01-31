@@ -36,8 +36,7 @@ The MCP Hedge Fund Agent simulates a modular hedge-fund-style AI analyst by:
 ├── plots/
 │   └── Auto-generated financial charts and analysis reports
 │
-└── README.md
-
+└── README.
 
 Requirements
 Python 3.10+ (Our team recommends using a virtual environment).
