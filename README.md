@@ -1,18 +1,43 @@
-📊 The MCP Hedge Fund Agent
+# 📊 MCP Hedge Fund Agent
 
-A collaborative effort to build a sophisticated Model Context Protocol (MCP) ecosystem. Our team developed this lightweight local server/client architecture to demonstrate how Agentic AI can handle complex financial request/response handling and machine learning workflows.
-This README.md is specifically designed for your Quant-Analyst MCP project, following the layout and professional structure of the provided screenshots.
+A collaborative effort to build a **Model Context Protocol (MCP)** ecosystem for financial intelligence.  
+This project demonstrates how **Agentic AI** can orchestrate complex **financial data pipelines**, **machine learning workflows**, and **tool-based reasoning** using a lightweight local server–client architecture.
 
-Project structure
-server.py — Our core server component that integrates yfinance for real-time market data and scikit-learn for predictive modeling.
+The system is designed for **quantitative analysis**, **market data retrieval**, and **predictive modeling**, making it suitable for research, experimentation, and educational use.
 
-client.py — An advanced orchestration client designed to send requests and manage the "Chain-of-Thought" tool-calling loop.
+---
 
-requirements.txt — A centralized manifest of our Python dependencies and project metadata for easy group deployment.
+## 🧠 Project Overview
 
-.env — Secure environment variables used by our team to manage sensitive API credentials (not checked into source control).
+The MCP Hedge Fund Agent simulates a modular hedge-fund-style AI analyst by:
 
-plots/ — A shared output directory for our auto-generated financial visualizations and trend analysis reports.
+- Fetching real-time and historical market data
+- Performing statistical and ML-based analysis
+- Generating visual insights
+- Coordinating reasoning through an agent-style request/response loop
+
+---
+
+## 🗂️ Project Structure
+
+```text
+├── server.py
+│   └── Core MCP server integrating market data and ML models
+│
+├── client.py
+│   └── Orchestration client managing agent requests and tool-calling flow
+│
+├── requirements.txt
+│   └── Centralized dependency list for reproducible setups
+│
+├── .env
+│   └── Environment variables for sensitive credentials (not committed)
+│
+├── plots/
+│   └── Auto-generated financial charts and analysis reports
+│
+└── README.md
+
 
 Requirements
 Python 3.10+ (Our team recommends using a virtual environment).
