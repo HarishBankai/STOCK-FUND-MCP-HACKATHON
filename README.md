@@ -1,4 +1,5 @@
 📊 The MCP Hedge Fund Agent
+
 A collaborative effort to build a sophisticated Model Context Protocol (MCP) ecosystem. Our team developed this lightweight local server/client architecture to demonstrate how Agentic AI can handle complex financial request/response handling and machine learning workflows.
 This README.md is specifically designed for your Quant-Analyst MCP project, following the layout and professional structure of the provided screenshots.
 
