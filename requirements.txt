@@ -1,0 +1,11 @@
+mcp[cli]
+fastmcp
+yfinance
+pandas
+numpy
+scikit-learn
+scipy
+matplotlib
+seaborn
+python-dotenv
+httpx
