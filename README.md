@@ -36,29 +36,88 @@ The MCP Hedge Fund Agent simulates a modular hedge-fund-style AI analyst by:
 ├── plots/
 │   └── Auto-generated financial charts and analysis reports
 │
-└── README.
+└── README.md
+⚙️ Core Components
+server.py
+Acts as the MCP-compliant server
 
-Requirements
-Python 3.10+ (Our team recommends using a virtual environment).
+Integrates:
 
-Setup
-1. Create and activate a team virtual environment:
-   python -m venv .venv
-  .\.venv\Scripts\activate
+yfinance for market data
 
-2. Install our project dependencies:
-   pip install -r requirements.txt
+scikit-learn for predictive modeling
 
-3. Configure Team Credentials: Create a .env file in the project root with your individual OpenAI API variables:
-   OPENAI_API_KEY="your_key_here"
+Handles structured financial queries and responses
 
-Running
-Start the Stock-Analyst Server:
-  python client.py server.py
+client.py
+Agent orchestration layer
 
-Notes
-Data Sources: We standardized our queries to support international tickers (e.g., .NS for NSE India) to ensure global financial coverage.
-Security Protocols: To maintain code integrity, keep sensitive values out of source control; use .env and ensure it is listed in .gitignore.
+Manages request routing, tool invocation, and reasoning loops
 
-Contributing
-Group contributions are welcome — open an issue or PR if you'd like to help us add more financial indicators or sentiment analysis features.
+Designed to simulate chain-of-thought style tool usage
+
+📦 Requirements
+Python 3.10+
+
+Virtual environment recommended
+
+🚀 Setup Instructions
+1️⃣ Create & Activate Virtual Environment
+python -m venv .venv
+.\.venv\Scripts\activate
+(On macOS/Linux)
+
+python3 -m venv .venv
+source .venv/bin/activate
+2️⃣ Install Dependencies
+pip install -r requirements.txt
+3️⃣ Configure Environment Variables
+Create a .env file in the project root:
+
+OPENAI_API_KEY="your_key_here"
+⚠️ Never commit .env files to source control.
+
+▶️ Running the Project
+Start the Stock-Analyst MCP Server via the client:
+
+python client.py server.py
+This launches the MCP workflow where the client orchestrates analytical requests to the server.
+
+📈 Data Sources & Market Coverage
+Powered by Yahoo Finance
+
+Supports international tickers
+
+Example:
+
+AAPL (US)
+
+RELIANCE.NS (India – NSE)
+
+Enables global equity, ETF, and index analysis
+
+📊 Output & Visualizations
+All generated charts and analysis reports are saved in:
+
+plots/
+Includes trend analysis, forecasts, and statistical summaries
+
+🔐 Security Notes
+API keys are managed using environment variables
+
+.env is excluded from version control
+
+Designed for local execution only
+
+🧪 Intended Use Cases
+Quantitative finance experiments
+
+Agentic AI research
+
+MCP protocol demonstrations
+
+Educational & academic projects
+
+📄 License
+This project is provided for research and educational purposes.
+Add a license file if you plan to open-source or distribute commercially.
