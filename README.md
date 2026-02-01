@@ -87,10 +87,7 @@ python -m ensurepip --upgrade
 ### 4️⃣ Install Dependencies
 
 ```powershell
-pip install \
-  mcp[cli] fastmcp openai yfinance pandas numpy \
-  scikit-learn scipy matplotlib seaborn \
-  python-dotenv httpx
+pip install -r requirements.txt
 ```
 
 ---
