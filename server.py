@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from mcp.server.fastmcp import FastMCP
 
-# 1. Initialize Server
 server = FastMCP("QuantAnalyst-Calculator")
 
 # --- SECTION 1: FINANCIAL TOOLS (Quant-Analyst) ---
@@ -83,10 +82,9 @@ async def plot_square_graph(start: float, end: float) -> str:
     plt.close()
     return f"Square graph saved at: {filename}"
 
-# --- SECTION 3: RUNNER ---
-
 def main():
     server.run(transport="stdio")
 
 if __name__ == "__main__":
+
     main() 
