@@ -1,90 +1,103 @@
 import asyncio
 import os
 import uuid
-import math
 import numpy as np
 import pandas as pd
 import yfinance as yf
 import matplotlib
-matplotlib.use("Agg")  # CRITICAL for headless server environments
-import matplotlib.pyplot as plt
+import requests
+from bs4 import BeautifulSoup
 from sklearn.linear_model import LinearRegression
 from mcp.server.fastmcp import FastMCP
 
-server = FastMCP("QuantAnalyst-Calculator")
+# Use a non-interactive backend for headless/terminal use
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
-# --- SECTION 1: FINANCIAL TOOLS (Quant-Analyst) ---
+server = FastMCP("QuantAnalyst-Pro")
+
+# Real browser headers to prevent Yahoo Finance from blocking the script
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+}
+
+def scrape_backup_price(ticker: str) -> str:
+    """Fallback: Gets live price if API historical download fails."""
+    try:
+        url = f"https://finance.yahoo.com/quote/{ticker}"
+        response = requests.get(url, headers=HEADERS, timeout=10)
+        soup = BeautifulSoup(response.text, "html.parser")
+        # Target the fin-streamer tag (standard in 2026)
+        price_tag = soup.find("fin-streamer", {"data-symbol": ticker, "data-field": "regularMarketPrice"})
+        return f"Current Price (Live Scraped): ₹{price_tag.text}" if price_tag else "N/A"
+    except Exception:
+        return "Scraping failed."
 
 @server.tool()
 async def analyze_stock_trend(ticker: str, period: str = "1y") -> str:
-    """Fetches stock data and calculates a 5-day predictive trend using Linear Regression."""
     try:
-        data = yf.download(ticker, period=period)
+        # 1. Download with multi_level_index=False to simplify columns
+        # Adding auto_adjust=True helps keep column names consistent
+        data = yf.download(ticker, period=period, progress=False, multi_level_index=False, auto_adjust=True)
+        
         if data.empty:
-            return f"Error: No data found for {ticker}"
+            return f"Error: No data found for {ticker}. Check if the ticker symbol is correct."
 
-        # Prepare regression
+        # 2. Safety Layer: Flatten columns manually if they are still MultiIndex
+        if isinstance(data.columns, pd.MultiIndex):
+            data.columns = data.columns.get_level_values(0)
+
+        # 3. Clean Gaps: Remove NaN values that crash Scikit-Learn
+        data = data.dropna(subset=['Close'])
+        
+        if len(data) < 10:
+            return f"Error: Insufficient data points for {ticker} after cleaning."
+
+        # 4. Regression Logic
         data['Days'] = range(len(data))
         X = data[['Days']].values
-        y = data['Close'].values
+        y = data['Close'].values.flatten()
 
-        model = LinearRegression()
-        model.fit(X, y)
+        model = LinearRegression().fit(X, y)
 
-        # Predict future
+        # 5. Forecast
         future_indices = np.array([[len(data) + i] for i in range(1, 6)])
         preds = model.predict(future_indices)
 
-        # Plotting logic integrated from your plot_xy_graph style
+        # Plotting (keep your existing logic)
         os.makedirs("plots", exist_ok=True)
         filename = f"plots/stock_{ticker}_{uuid.uuid4().hex[:6]}.png"
-
+        
         plt.figure(figsize=(10, 5))
-        plt.plot(data.index, y, label="Actual Price")
-        plt.plot(data.index, model.predict(X), label="Trend Line", linestyle="--")
-        plt.title(f"{ticker} Analysis & 5-Day Forecast")
-        plt.legend()
-        plt.grid(True)
+        plt.plot(data.index, y, label="Actual Price", color="blue")
+        plt.plot(data.index, model.predict(X), label="Trend Line", linestyle="--", color="orange")
+        plt.title(f"{ticker} Forecast Analysis")
+        plt.legend(); plt.grid(True, alpha=0.3)
         plt.savefig(filename)
         plt.close()
 
-        pred_str = ", ".join([f"${p:.2f}" for p in preds.flatten()])
+        pred_str = ", ".join([f"₹{p:.2f}" for p in preds])
         return f"Trend for {ticker} analyzed. Predicted next 5 days: {pred_str}. Chart: {filename}"
+
     except Exception as e:
-        return f"Error analyzing {ticker}: {str(e)}"
-
-# --- SECTION 2: CALCULATOR & PLOTTING TOOLS ---
+        return f"Technical Error analyzing {ticker}: {str(e)}"
 
 @server.tool()
-async def add(a: float, b: float) -> str:
-    """Adds two numbers."""
-    return str(a + b)
-
-@server.tool()
-async def div(a: float, b: float) -> str:
-    """Divides two numbers."""
-    return str(a / b) if b != 0 else "Error: Division by zero"
-
-@server.tool()
-async def plot_square_graph(start: float, end: float) -> str:
-    """Plot y = x^2 between two values."""
-    x = np.linspace(start, end, 200)
-    y = x ** 2
-    
-    os.makedirs("plots", exist_ok=True)
-    filename = f"plots/square_plot_{uuid.uuid4().hex[:6]}.png"
-    
-    plt.figure()
-    plt.plot(x, y)
-    plt.title("y = x²")
-    plt.grid(True)
-    plt.savefig(filename)
-    plt.close()
-    return f"Square graph saved at: {filename}"
+async def get_stock_info(ticker: str) -> str:
+    """Fetches key fundamentals for the analyst."""
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        return (f"Stats for {ticker}:\n"
+                f"- Market Cap: ₹{info.get('marketCap', 'N/A'):,}\n"
+                f"- P/E Ratio: {info.get('trailingPE', 'N/A')}\n"
+                f"- Summary: {info.get('longBusinessSummary', 'N/A')[:150]}...")
+    except Exception as e:
+        return f"Fundamental Error: {str(e)}"
 
 def main():
     server.run(transport="stdio")
 
 if __name__ == "__main__":
+    main()
 
-    main() 
