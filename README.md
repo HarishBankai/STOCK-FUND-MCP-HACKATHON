@@ -80,6 +80,7 @@ uv add mcp[cli] httpx use
 
 ```powershell
 python -m ensurepip --upgrade
+pip install --upgrade pip
 ```
 
 ---
