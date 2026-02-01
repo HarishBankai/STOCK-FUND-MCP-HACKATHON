@@ -10,4 +10,5 @@ seaborn
 python-dotenv
 httpx
 requests
-beautifulsoup
+beautifulsoup4
+
