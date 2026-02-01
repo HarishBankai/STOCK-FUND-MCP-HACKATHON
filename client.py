@@ -45,7 +45,20 @@ class MCPClient:
 
     async def process_query(self, query: str) -> str:
         """Handles the 'Agentic' loop where the LLM can call multiple tools."""
-        messages = [{"role": "user", "content": query}]
+        messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a Hedge Fund Analyst. Follow these rules strictly:\n"
+                "1. CHECK FUNDAMENTALS: Use 'get_stock_info' before technical analysis.\n"
+                "2. INDIAN STOCKS: Append '.NS' for NSE tickers (e.g., 'ZOMATO.NS', 'TATASTEEL.NS').\n"
+                "3. TREND PERIODS: When calling 'analyze_stock_trend', ONLY use these exact codes for the period argument: '1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', 'max'.\n"
+                "   - INCORRECT: '6 months', '1 year'\n"
+                "   - CORRECT: '6mo', '1y'"
+            )
+        },
+        {"role": "user", "content": query}
+    ]
 
         # 1. Fetch current tools from your MCP server
         mcp_tools = (await self.session.list_tools()).tools
@@ -94,8 +107,7 @@ class MCPClient:
                     "content": str(result.content)
                 })
                 
-            # The loop continues to see if the LLM needs more tools (like plotting after analysis)
-
+        
     async def chat_loop(self):
         print("\n--- Quant-Analyst Terminal Ready ---")
         print("Type 'quit' to exit.")
