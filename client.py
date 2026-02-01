@@ -1,18 +1,22 @@
 import asyncio
 import sys
 import json
+import os
+import re
+import platform
+import subprocess
 from contextlib import AsyncExitStack
 from pathlib import Path
 from dotenv import load_dotenv 
 
+# MCP and OpenAI library imports
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from openai import AsyncOpenAI
 
-# Load API keys from .env
+# Load API keys from .env (OPENAI_API_KEY)
 load_dotenv()
 
-# We use gpt-4o-mini for high speed and low cost during the hackathon
 OPENAI_MODEL = "gpt-4o-mini" 
 
 class MCPClient:
@@ -22,10 +26,10 @@ class MCPClient:
         self.openai = AsyncOpenAI()
 
     async def connect_to_server(self, server_script_path: str):
-        """Standardize the connection to the Quant-Analyst server."""
+        """Initializes the connection to the Quant-Analyst MCP server."""
         path = Path(server_script_path).resolve()
         
-        # Use 'python' instead of 'uv' for a more direct connection
+        # Define how to launch the server
         server_params = StdioServerParameters(
             command="python", 
             args=[str(path)],
@@ -33,34 +37,50 @@ class MCPClient:
         )
 
         print(f"Connecting to Quant-Analyst server at: {path.name}...")
+        
+        # Establish the transport and session
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
         self.stdio, self.write = stdio_transport
         self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
 
+        # Initialize the MCP handshake
         await self.session.initialize()
         
-        # Discover the Quant tools (get_stock_trend, find_similar_stocks)
+        # Discover available tools
         tools = (await self.session.list_tools()).tools
-        print("\n✅ Connected! Tools discovered:", [t.name for t in tools])
+        print(f"✅ Connected! Tools discovered: {[t.name for t in tools]}")
+
+    def open_visual_report(self, filepath):
+        """Cross-platform logic to open generated PNG charts automatically."""
+        abs_path = os.path.abspath(filepath)
+        try:
+            print(f"🖼️ Opening Analyst Report: {filepath}")
+            if platform.system() == "Windows":
+                os.startfile(abs_path)
+            elif platform.system() == "Darwin": # macOS
+                subprocess.call(("open", abs_path))
+            else: # Linux
+                subprocess.call(("xdg-open", abs_path))
+        except Exception as e:
+            print(f"⚠️ Could not open chart automatically: {e}")
 
     async def process_query(self, query: str) -> str:
-        """Handles the 'Agentic' loop where the LLM can call multiple tools."""
+        """The 'Agentic' loop: LLM Reasoning -> Tool Execution -> Result Summary."""
         messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a Hedge Fund Analyst. Follow these rules strictly:\n"
-                "1. CHECK FUNDAMENTALS: Use 'get_stock_info' before technical analysis.\n"
-                "2. INDIAN STOCKS: Append '.NS' for NSE tickers (e.g., 'ZOMATO.NS', 'TATASTEEL.NS').\n"
-                "3. TREND PERIODS: When calling 'analyze_stock_trend', ONLY use these exact codes for the period argument: '1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', 'max'.\n"
-                "   - INCORRECT: '6 months', '1 year'\n"
-                "   - CORRECT: '6mo', '1y'"
-            )
-        },
-        {"role": "user", "content": query}
-    ]
+            {
+                "role": "system",
+                "content": (
+                    "You are a Senior Hedge Fund Analyst. Follow these rules:\n"
+                    "1. ANALYZE FIRST: Use 'get_stock_info' for context before 'analyze_stock_trend'.\n"
+                    "2. TICKERS: Always append '.NS' for Indian stocks (e.g., RELIANCE.NS).\n"
+                    "3. PLOTS: If you mention a chart path (plots/*.png), the client will open it.\n"
+                    "4. CALCULATIONS: If the user asks for profit, subtract current from predicted price."
+                )
+            },
+            {"role": "user", "content": query}
+        ]
 
-        # 1. Fetch current tools from your MCP server
+        # Fetch available tools from the server
         mcp_tools = (await self.session.list_tools()).tools
         openai_tools = [
             {
@@ -70,12 +90,11 @@ class MCPClient:
                     "description": tool.description,
                     "parameters": tool.inputSchema,
                 },
-            }
-            for tool in mcp_tools
+            } for tool in mcp_tools
         ]
 
-        # 2. Start the conversation loop
         while True:
+            # Call OpenAI with the tool definitions
             response = await self.openai.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=messages,
@@ -85,39 +104,41 @@ class MCPClient:
 
             message = response.choices[0].message
             
-            # If no tool calls, return the final analyst summary
+            # If no more tool calls are needed, we have the final report
             if not message.tool_calls:
-                return message.content
+                final_answer = message.content
+                
+                # Check for a PNG path in the response to trigger the Auto-Open
+                chart_match = re.search(r"plots/[\w\.-]+\.png", final_answer)
+                if chart_match:
+                    self.open_visual_report(chart_match.group(0))
+                
+                return final_answer
 
-            # Otherwise, execute the tool calls
+            # Execute the tool calls requested by the LLM
             messages.append(message)
             for call in message.tool_calls:
                 tool_name = call.function.name
                 tool_args = json.loads(call.function.arguments)
-
-                print(f"🛠️ Analyst is running tool: {tool_name}({tool_args})")
                 
-                # Execute on server
+                print(f"🛠️ Analyst is running: {tool_name}({tool_args})")
                 result = await self.session.call_tool(tool_name, tool_args)
                 
-                # Format result back to OpenAI
+                # Feed the data back to the LLM
                 messages.append({
                     "role": "tool",
                     "tool_call_id": call.id,
                     "content": str(result.content)
                 })
-                
-        
-    async def chat_loop(self):
-        print("\n--- Quant-Analyst Terminal Ready ---")
-        print("Type 'quit' to exit.")
 
+    async def chat_loop(self):
+        """Interactive terminal for the Analyst."""
+        print("\n--- Quant-Analyst Terminal Ready ---")
         while True:
             try:
                 user_input = input("\nQuery: ").strip()
                 if user_input.lower() in ["quit", "exit"]:
                     break
-
                 if not user_input:
                     continue
 
@@ -125,7 +146,7 @@ class MCPClient:
                 print(f"\n📊 Analyst Response:\n{answer}")
                 
             except Exception as e:
-                print(f"❌ Error during analysis: {e}")
+                print(f"❌ Analysis Error: {e}")
 
     async def cleanup(self):
         await self.exit_stack.aclose()
@@ -144,3 +165,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
